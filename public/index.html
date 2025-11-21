@@ -94,26 +94,53 @@
 
   <main class="wrap">
     <section class="card" role="region" aria-labelledby="title">
-      <header>
-        <h1 id="title">API Key Generator</h1>
-        <p>Generate secure, copy-ready keys in a forest-fresh vibe 🌿</p>
+      <header style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h1 id="title">API Key Generator</h1>
+          <p>Generate secure, copy-ready keys in a forest-fresh vibe 🌿</p>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <button class="btn ghost" id="btnLoginAdmin" type="button">Admin Login</button>
+          <button class="btn ghost" id="btnRegisterAdmin" type="button">Register</button>
+        </div>
       </header>
 
-      <div class="body">
-        <div class="row" role="group" aria-label="Key actions">
-          <div class="field" id="keyField">
-            <input id="key" class="monospace" type="text" value="" readonly aria-label="Generated API key" />
-          </div>
-          <button class="btn primary" id="genBtn" type="button" aria-label="Generate new key">Generate New</button>
-          <button class="btn ghost" id="copyBtn" type="button" aria-label="Copy key to clipboard">Copy</button>
-          <button class="btn ghost" id="checkBtn" type="button" aria-label="Check key validity">Check</button>
-        </div>
 
-        <!-- status/info row -->
-        <div class="options">
-          <span id="statusBadge" class="badge" style="display:none">checking…</span>
-          <span class="badge" title="Cryptographically strong random">crypto-safe</span>
-        </div>
+      <div class="body">
+            <!-- FORM DATA USER -->
+            <form id="userForm" style="margin-bottom:16px; display:grid; gap:10px;">
+              <div class="row">
+                <div class="field">
+                  <input id="firstName" type="text" placeholder="First name" aria-label="First name" />
+                </div>
+                <div class="field">
+                  <input id="lastName" type="text" placeholder="Last name" aria-label="Last name" />
+                </div>
+              </div>
+              <div class="row">
+                <div class="field">
+                  <input id="email" type="email" placeholder="Email" aria-label="Email" />
+                </div>
+                <button class="btn primary" id="saveBtn" type="button">Save User + Key</button>
+              </div>
+            </form>
+
+            <!-- ROW API KEY (yg lama) -->
+            <div class="row" role="group" aria-label="Key actions">
+              <div class="field" id="keyField">
+                <input id="key" class="monospace" type="text" value="" readonly aria-label="Generated API key" />
+              </div>
+              <button class="btn primary" id="genBtn" type="button" aria-label="Generate new key">Generate New</button>
+              <button class="btn ghost" id="copyBtn" type="button" aria-label="Copy key to clipboard">Copy</button>
+              <button class="btn ghost" id="checkBtn" type="button" aria-label="Check key validity">Check</button>
+            </div>
+
+            <!-- status/info row -->
+            <div class="options">
+              <span id="statusBadge" class="badge" style="display:none">checking…</span>
+              <span class="badge" title="Cryptographically strong random">crypto-safe</span>
+            </div>
       </div>
     </section>
   </main>
@@ -213,6 +240,46 @@
         }
       });
 
+      saveBtn.addEventListener('click', async () => {
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName  = document.getElementById('lastName').value.trim();
+    const email     = document.getElementById('email').value.trim();
+    const apiKey    = document.getElementById('key').value.trim();
+
+    if (!firstName || !lastName || !email) {
+      toast('Nama & email wajib diisi');
+      return;
+    }
+    if (!apiKey) {
+      toast('Generate API key dulu');
+      return;
+    }
+
+    try {
+      const res = await fetch('/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          api_key: apiKey
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.message || 'Gagal simpan user');
+        return;
+      }
+
+      toast('User & key tersimpan ✅');
+    } catch (err) {
+      console.error(err);
+      toast('Error saat simpan user');
+    }
+  });
+
       // Check validity (backend)
       checkBtn.addEventListener('click', async ()=>{
         const key = document.getElementById('key').value.trim();
@@ -237,6 +304,15 @@
       copyBtn.addEventListener('click', ()=> copyToClipboard(document.getElementById('key').value));
       keyField.addEventListener('click', ()=> copyToClipboard(document.getElementById('key').value));
       document.getElementById('key').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') copyToClipboard(e.target.value); });
+
+      document.getElementById('btnLoginAdmin').addEventListener('click', () => {
+        window.location.href = '/admin-login.html';
+      });
+
+      document.getElementById('btnRegisterAdmin').addEventListener('click', () => {
+        window.location.href = '/admin-register.html';
+      });
+
     }
 
     document.addEventListener('DOMContentLoaded', init);
