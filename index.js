@@ -132,6 +132,81 @@ app.post('/checkapi', async (req, res) => {
   }
 });
 
+// ================== ROUTES ADMIN AUTH ==================
+
+// POST /admin/register
+app.post('/admin/register', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password)
+    return res.status(400).json({ message: 'Email & password wajib' });
+
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    await db.execute(
+      'INSERT INTO admins (email, password_hash) VALUES (?,?)',
+      [email, hash]
+    );
+    res.status(201).json({ message: 'Admin berhasil register' });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Email sudah terdaftar' });
+    }
+    res.status(500).json({ message: 'Gagal register admin' });
+  }
+});
+
+// POST /admin/login
+app.post('/admin/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password)
+    return res.status(400).json({ message: 'Email & password wajib' });
+
+  try {
+    const [rows] = await db.execute(
+      'SELECT * FROM admins WHERE email = ?',
+      [email]
+    );
+    if (rows.length === 0)
+      return res.status(401).json({ message: 'Email / password salah' });
+
+    const admin = rows[0];
+    const match = await bcrypt.compare(password, admin.password_hash);
+    if (!match)
+      return res.status(401).json({ message: 'Email / password salah' });
+
+    const token = jwt.sign({ id: admin.id }, JWT_SECRET, { expiresIn: '1d' });
+    res.json({ token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Gagal login' });
+  }
+});
+
+// ================== ROUTES ADMIN PROTECTED ==================
+
+// GET /admin/users → list user + api key + status + expires_at
+app.get('/admin/users', authAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.execute(`
+      SELECT u.id,
+             u.first_name,
+             u.last_name,
+             u.email,
+             k.api_key,
+             k.status,
+             k.expires_at
+      FROM users u
+      LEFT JOIN api_keys k ON k.user_id = u.id
+      ORDER BY u.created_at DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Gagal ambil data user' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log('Server running on http://localhost:' + PORT);
 });
