@@ -55,6 +55,82 @@ app.post('/create', (req, res) => {
   res.json({ api_key: key });
 });
 
+// POST /users → simpan user + api_key ke DB
+app.post('/users', async (req, res) => {
+  const { first_name, last_name, email, api_key } = req.body;
+
+  if (!first_name || !last_name || !email || !api_key) {
+    return res.status(400).json({ message: 'Field wajib diisi' });
+  }
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // insert user
+    const [userResult] = await conn.execute(
+      'INSERT INTO users (first_name, last_name, email) VALUES (?,?,?)',
+      [first_name, last_name, email]
+    );
+    const userId = userResult.insertId;
+
+    // masa berlaku: 30 hari dari sekarang
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    await conn.execute(
+      'INSERT INTO api_keys (user_id, api_key, expires_at) VALUES (?,?,?)',
+      [userId, api_key, expiresAt]
+    );
+
+    await conn.commit();
+    res.status(201).json({ message: 'User & API key tersimpan', user_id: userId });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Gagal simpan user', error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// POST /checkapi → cek valid / out_of_date
+app.post('/checkapi', async (req, res) => {
+  const { api_key } = req.body;
+  if (!api_key) return res.status(400).json({ message: 'api_key wajib' });
+
+  try {
+    const [rows] = await db.execute(
+      'SELECT id, status, expires_at FROM api_keys WHERE api_key = ?',
+      [api_key]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ valid: false, message: 'Key tidak ditemukan' });
+    }
+
+    const keyRow = rows[0];
+    const now = new Date();
+    const exp = new Date(keyRow.expires_at);
+
+    if (keyRow.status === 'revoked') {
+      return res.json({ valid: false, message: 'Key revoked' });
+    }
+
+    if (exp < now) {
+      // update jadi out_of_date kalau expired
+      await db.execute(
+        'UPDATE api_keys SET status = ? WHERE id = ?',
+        ['out_of_date', keyRow.id]
+      );
+      return res.json({ valid: false, message: 'Key out of date' });
+    }
+
+    return res.json({ valid: true, message: 'Key masih aktif' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ valid: false, message: 'Error server' });
+  }
+});
 
 app.listen(PORT, () => {
   console.log('Server running on http://localhost:' + PORT);
