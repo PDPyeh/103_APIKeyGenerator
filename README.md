@@ -11,3 +11,8 @@ Login admin
 
 Dashboard admin
 <img width="2559" height="1474" alt="image" src="https://github.com/user-attachments/assets/30c5272f-2881-4ced-848a-4d1227284806" />
+
+DB
+<img width="1091" height="286" alt="image" src="https://github.com/user-attachments/assets/3e7c7f15-ed5e-45a3-89ca-634640c03244" />
+<img width="1002" height="275" alt="image" src="https://github.com/user-attachments/assets/3fda02bd-d731-47a3-a614-b20866dd181d" />
+<img width="894" height="232" alt="image" src="https://github.com/user-attachments/assets/e397a34f-e676-401f-b9a7-5a02719441b4" />
